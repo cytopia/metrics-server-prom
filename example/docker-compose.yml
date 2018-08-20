@@ -1,0 +1,39 @@
+version: '2.1'
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    hostname: prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./conf/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      metrics_server_prom_net:
+        ipv4_address: 172.23.238.100
+
+  target:
+    image: cytopia/metrics-server-prom:latest
+    hostname: target
+    restart: always
+    ports:
+      - "9100:9100"
+    volumes:
+      - ${KUBE_CONFIG_PATH:-~/.kube/config}:/etc/kube/config:ro
+    networks:
+      metrics_server_prom_net:
+        ipv4_address: 172.23.238.101
+    environment:
+      - KUBE_CONTEXT
+
+networks:
+  metrics_server_prom_net:
+    driver: bridge
+    driver_opts:
+      com.docker.network.enable_ipv6: "false"
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.23.238.0/24
+          gateway: 172.23.238.1

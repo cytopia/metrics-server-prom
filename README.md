@@ -72,6 +72,15 @@ scrape_configs:
         - <DOCKER_IP_ADDRESS>:9100
 ```
 
+### Docker Compose
+
+To get you started quickly, this repository ships a Docker Compose example:
+
+1. Navigate to [example/](example/)
+2. Copy `env-example` to `.env`
+3. Adjust `KUBE_CONTEXT` in `.env`
+4. Run it `docker-compose up`
+
 
 ## Transformation example
 
