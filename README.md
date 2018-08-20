@@ -1,5 +1,9 @@
 # Kubernetes Metrics Server Prometheus Adapter
 
+[![Build Status](https://travis-ci.org/cytopia/metrics-server-prom.svg?branch=master)](https://travis-ci.org/cytopia/metrics-server-prom)
+[![release](https://img.shields.io/github/tag/cytopia/metrics-server-prom.svg)](https://github.com/cytopia/metrics-server-prom/releases)
+
+[![](http://dockeri.co/image/cytopia/metrics-server-prom)](https://hub.docker.com/r/cytopia/metrics-server-prom/)
 
 ## Overview
 
