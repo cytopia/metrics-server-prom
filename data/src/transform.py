@@ -62,15 +62,15 @@ def val2base(string):
     # Transform KiliByte, MegiByte and GigiByte into Bytes
     val = re.search('^([0-9]+)Ki$', string, re.IGNORECASE)
     if val and val.group(1):
-        return int(val.group(1)) / 1024
+        return int(val.group(1)) * 1024
 
     val = re.search('^([0-9]+)Mi$', string, re.IGNORECASE)
     if val and val.group(1):
-        return int(val.group(1)) / (1024*1024)
+        return int(val.group(1)) * (1024*1024)
 
     val = re.search('^([0-9]+)Gi$', string, re.IGNORECASE)
     if val and val.group(1):
-        return int(val.group(1)) / (1024*1024*1024)
+        return int(val.group(1)) * (1024*1024*1024)
 
     # Transform minutes and seconds into seconds
     val = re.search('^([0-9]+)m([0-9]+)s$', string, re.IGNORECASE)
