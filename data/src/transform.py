@@ -112,7 +112,7 @@ def trans_node_metrics(string):
     for node in data.get('items', []):
         lbl = {
             'node': node.get('metadata', []).get('name', ''),
-            'created': node.get('metadata', []).get('created', ''),
+            'created': node.get('metadata', []).get('creationTimestamp', ''),
             'timestamp': node.get('timestamp', ''),
             'window': node.get('window', '')
         }
@@ -152,7 +152,7 @@ def trans_pod_metrics(string):
         lbl = {
             'pod': pod.get('metadata', []).get('name', ''),
             'ns': pod.get('metadata', []).get('namespace', ''),
-            'created': pod.get('metadata', []).get('created', ''),
+            'created': pod.get('metadata', []).get('creationTimestamp', ''),
             'timestamp': pod.get('timestamp', ''),
             'window': pod.get('window', '')
         }
