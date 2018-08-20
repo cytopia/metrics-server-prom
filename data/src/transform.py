@@ -107,7 +107,7 @@ def trans_node_metrics(string):
     mem.append('# HELP kube_metrics_server_node_mem The memory of a node in Bytes.')
     mem.append('# TYPE kube_metrics_server_node_mem gauge')
 
-    tpl = 'kube_metrics_server_node_{}{{node="{}",created="{}",timestamp="{}",window="{}"}} {}'
+    tpl = 'kube_metrics_server_node_{}{{node="{}",created="{}",timestamp="{}",window="{}",debugval="{}"}} {}'
 
     for node in data.get('items', []):
         lbl = {
@@ -117,11 +117,11 @@ def trans_node_metrics(string):
             'window': node.get('window', '')
         }
         val = {
-            'cpu': val2base(node.get('usage', []).get('cpu', '')),
-            'mem': val2base(node.get('usage', []).get('memory', ''))
+            'cpu': node.get('usage', []).get('cpu', ''),
+            'mem': node.get('usage', []).get('memory', '')
         }
-        cpu.append(tpl.format('cpu', lbl['node'], lbl['created'], lbl['timestamp'], lbl['window'], val['cpu']))
-        mem.append(tpl.format('mem', lbl['node'], lbl['created'], lbl['timestamp'], lbl['window'], val['mem']))
+        cpu.append(tpl.format('cpu', lbl['node'], lbl['created'], lbl['timestamp'], lbl['window'], val['cpu'], val2base(val['cpu'])))
+        mem.append(tpl.format('mem', lbl['node'], lbl['created'], lbl['timestamp'], lbl['window'], val['mem'], val2base(val['mem'])))
     return '\n'.join(cpu + mem)
 
 
@@ -146,7 +146,7 @@ def trans_pod_metrics(string):
     mem.append('# HELP kube_metrics_server_pod_mem The memory of a pod in Bytes.')
     mem.append('# TYPE kube_metrics_server_pod_mem gauge')
 
-    tpl = 'kube_metrics_server_pod_{}{{pod="{}",container="{}",namespace="{}",created="{}",timestamp="{}",window="{}"}} {}'
+    tpl = 'kube_metrics_server_pod_{}{{pod="{}",container="{}",namespace="{}",created="{}",timestamp="{}",window="{}",debugval="{}"}} {}'
 
     for pod in data.get('items', []):
         lbl = {
@@ -160,11 +160,11 @@ def trans_pod_metrics(string):
         for container in pod.get('containers', []):
             lbl['cont'] = container.get('name', '')
             val = {
-                'cpu': val2base(container.get('usage', []).get('cpu', '')),
-                'mem': val2base(container.get('usage', []).get('memory', ''))
+                'cpu': container.get('usage', []).get('cpu', ''),
+                'mem': container.get('usage', []).get('memory', '')
             }
-            cpu.append(tpl.format('cpu', lbl['pod'], lbl['cont'], lbl['ns'], lbl['created'], lbl['timestamp'], lbl['window'], val['cpu']))
-            mem.append(tpl.format('mem', lbl['pod'], lbl['cont'], lbl['ns'], lbl['created'], lbl['timestamp'], lbl['window'], val['mem']))
+            cpu.append(tpl.format('cpu', lbl['pod'], lbl['cont'], lbl['ns'], lbl['created'], lbl['timestamp'], lbl['window'], val['cpu'], val2base(val['cpu'])))
+            mem.append(tpl.format('mem', lbl['pod'], lbl['cont'], lbl['ns'], lbl['created'], lbl['timestamp'], lbl['window'], val['mem'], val2base(val['mem'])))
     return '\n'.join(cpu + mem)
 
 
