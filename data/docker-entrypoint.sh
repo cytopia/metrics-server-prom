@@ -46,7 +46,7 @@ printf "OK\n"
 if printenv KUBE_CONTEXT >/dev/null 2>&1; then
 	echo "[init] KUBE_CONTEXT set, using user specified context: ${KUBE_CONTEXT}"
 	printf "[init] Checking kube context ..."
-	if ! ERROR="$( (kubectl config use-context 3>&2 2>&1 1>&3) 2>/dev/null) )"; then
+	if ! ERROR="$( (kubectl config use-context ${KUBE_CONTEXT} 3>&2 2>&1 1>&3) 2>/dev/null) )"; then
 		>&2 echo "FAILED"
 		>&2 echo "[init] Error, invalid kube context"
 		>&2 echo "[init] ${ERROR}"
