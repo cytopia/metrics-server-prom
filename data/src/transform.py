@@ -8,6 +8,7 @@ into Prometheus readable format.
 '''
 
 import json
+import re
 import requests
 from flask import Flask
 from flask import Response
@@ -38,6 +39,53 @@ def json2dict(data):
     return json_object
 
 
+def val2base(string):
+    '''
+    Transforms an arbitrary string value into a prometheus valid base (int|float) type by best guess:
+    https://prometheus.io/docs/instrumenting/exposition_formats/#comments-help-text-and-type-information
+    https://golang.org/pkg/strconv/#ParseFloat
+    https://golang.org/pkg/strconv/#ParseInt
+
+    Currently able to handle values of:
+      15Ki
+      15Mi
+      15Gi
+      1m0s
+      5m
+
+    Args:
+        string (str): metrics-server metrics value
+    Returns:
+        int|float|string: transformed value or initial value if no transformation regex was found.
+    '''
+
+    # Transform KiliByte, MegiByte and GigiByte into Bytes
+    val = re.search('^([0-9]+)Ki$', string, re.IGNORECASE)
+    if val and val.group(1):
+        return int(val.group(1)) / 1024
+
+    val = re.search('^([0-9]+)Mi$', string, re.IGNORECASE)
+    if val and val.group(1):
+        return int(val.group(1)) / (1024*1024)
+
+    val = re.search('^([0-9]+)Gi$', string, re.IGNORECASE)
+    if val and val.group(1):
+        return int(val.group(1)) / (1024*1024*1024)
+
+    # Transform minutes and seconds into seconds
+    val = re.search('^([0-9]+)m([0-9]+)s$', string, re.IGNORECASE)
+    if val and val.group(1) and val.group(2):
+        return (int(val.group(1))*60 + val.group(2))
+
+    # Transform minutes into seconds
+    val = re.search('^([0-9]+)m$', string, re.IGNORECASE)
+    if val and val.group(1):
+        return (int(val.group(1))*60)
+
+    # Otherwise return value as it came in
+    return string
+
+
 def trans_node_metrics(string):
     '''
     Transforms metrics-server node metrics (in the form of a JSON string) into Prometheus
@@ -54,9 +102,9 @@ def trans_node_metrics(string):
     cpu = []
     mem = []
 
-    cpu.append('# HELP kube_metrics_server_node_cpu The CPU time of a node.')
+    cpu.append('# HELP kube_metrics_server_node_cpu The CPU time of a node in seconds.')
     cpu.append('# TYPE kube_metrics_server_node_cpu gauge')
-    mem.append('# HELP kube_metrics_server_node_mem The memory of a node.')
+    mem.append('# HELP kube_metrics_server_node_mem The memory of a node in Bytes.')
     mem.append('# TYPE kube_metrics_server_node_mem gauge')
 
     tpl = 'kube_metrics_server_node_{}{{node="{}",created="{}",timestamp="{}",window="{}"}} {}'
@@ -69,8 +117,8 @@ def trans_node_metrics(string):
             'window': node.get('window', '')
         }
         val = {
-            'cpu': node.get('usage', []).get('cpu', ''),
-            'mem': node.get('usage', []).get('memory', '')
+            'cpu': val2base(node.get('usage', []).get('cpu', '')),
+            'mem': val2base(node.get('usage', []).get('memory', ''))
         }
         cpu.append(tpl.format('cpu', lbl['node'], lbl['created'], lbl['timestamp'], lbl['window'], val['cpu']))
         mem.append(tpl.format('mem', lbl['node'], lbl['created'], lbl['timestamp'], lbl['window'], val['mem']))
@@ -93,9 +141,9 @@ def trans_pod_metrics(string):
     cpu = []
     mem = []
 
-    cpu.append('# HELP kube_metrics_server_pod_cpu The CPU time of a pod.')
+    cpu.append('# HELP kube_metrics_server_pod_cpu The CPU time of a pod in seconds.')
     cpu.append('# TYPE kube_metrics_server_pod_cpu gauge')
-    mem.append('# HELP kube_metrics_server_pod_mem The memory of a pod.')
+    mem.append('# HELP kube_metrics_server_pod_mem The memory of a pod in Bytes.')
     mem.append('# TYPE kube_metrics_server_pod_mem gauge')
 
     tpl = 'kube_metrics_server_pod_{}{{pod="{}",container="{}",namespace="{}",created="{}",timestamp="{}",window="{}"}} {}'
@@ -112,8 +160,8 @@ def trans_pod_metrics(string):
         for container in pod.get('containers', []):
             lbl['cont'] = container.get('name', '')
             val = {
-                'cpu': container.get('usage', []).get('cpu', ''),
-                'mem': container.get('usage', []).get('memory', '')
+                'cpu': val2base(container.get('usage', []).get('cpu', '')),
+                'mem': val2base(container.get('usage', []).get('memory', ''))
             }
             cpu.append(tpl.format('cpu', lbl['pod'], lbl['cont'], lbl['ns'], lbl['created'], lbl['timestamp'], lbl['window'], val['cpu']))
             mem.append(tpl.format('mem', lbl['pod'], lbl['cont'], lbl['ns'], lbl['created'], lbl['timestamp'], lbl['window'], val['mem']))
