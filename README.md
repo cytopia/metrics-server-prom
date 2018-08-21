@@ -1,26 +1,31 @@
 # Kubernetes Metrics Server Prometheus Adapter
 
+**[Motivation](#motivation)** |
+**[Usage](#usage)** |
+**[Docker Compose](#docker-compose)** |
+**[Metrics transformation](#metrics-transformation)** |
+**[License](#license)**
+
 [![Build Status](https://travis-ci.org/cytopia/metrics-server-prom.svg?branch=master)](https://travis-ci.org/cytopia/metrics-server-prom)
 [![release](https://img.shields.io/github/tag/cytopia/metrics-server-prom.svg)](https://github.com/cytopia/metrics-server-prom/releases)
 
-[![](http://dockeri.co/image/cytopia/metrics-server-prom)](https://hub.docker.com/r/cytopia/metrics-server-prom/)
+<a target="_blank" title="DockerHub" href="https://hub.docker.com/r/cytopia/metrics-server-prom/"><img src="https://dockeri.co/image/cytopia/metrics-server-prom" /></a>
 
-## Overview
+## Motivation
 
-### What
+### What is provided
 
 A Docker image on which [Prometheus](https://github.com/prometheus/prometheus) can scrape Kubernetes metrics provided by **[metrics-server](https://github.com/kubernetes-incubator/metrics-server)**. The image can run anywhere where Prometheus can use it as a target, even in Kubernetes itself.
 
-### Why
+### Why is it needed
 
 metrics-server seems to be the [successor of heapster](https://github.com/kubernetes/heapster) for Kubernetes monitoring. However, metrics-server currently only provides its metrics in JSON format via the Kubernetes API server.
 
-Prometheus on the other hand expects text-based format
-using [EBNF syntax](https://prometheus.io/docs/instrumenting/exposition_formats/#comments-help-text-and-type-information) <sup>[1]</sup>.
+Prometheus on the other hand expects a special [text-based format](https://prometheus.io/docs/instrumenting/exposition_formats/#comments-help-text-and-type-information).
+So in order for Prometheus to scrape those metrics, they must be transparently transformed from JSON to its own format on every request.
 
-> <sup>[1]</sup> [Extended Backus Naur Form](https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form)
 
-### How
+### How does it work
 
 The following diagram illustrates how the format transformation is achieved:
 
@@ -72,9 +77,10 @@ scrape_configs:
         - <DOCKER_IP_ADDRESS>:9100
 ```
 
-### Docker Compose
+## Docker Compose
 
-To get you started quickly, this repository ships a Docker Compose example:
+To test this out locally, this repository ships an example Docker Compose setup with
+metrics-server-prom and Prometheus.
 
 1. Navigate to [example/](example/)
 2. Copy `env-example` to `.env`
@@ -82,7 +88,7 @@ To get you started quickly, this repository ships a Docker Compose example:
 4. Run it `docker-compose up`
 
 
-## Transformation example
+## Metrics transformation
 
 metrics-server provices metrics in the following format:
 ```json
@@ -112,7 +118,7 @@ metrics-server provices metrics in the following format:
         }
       ]
     },
-    ...
+
   ]
 }
 ```
