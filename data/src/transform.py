@@ -7,9 +7,12 @@ Transformer for kubernetes-incubator/metrics-server from json
 into Prometheus readable format.
 '''
 
+import os
 import json
 import re
+import time
 import requests
+import subprocess
 from flask import Flask
 from flask import Response
 
@@ -20,6 +23,36 @@ Globals that specify at which url metrics for nodes and pods can be found
 PROXY = 'http://127.0.0.1:8080'
 URL_NODES = PROXY + '/apis/metrics.k8s.io/v1beta1/nodes'
 URL_PODS = PROXY + '/apis/metrics.k8s.io/v1beta1/pods'
+
+def shell_exec(command):
+    '''
+    Execute raw shell command and return exit code and output
+
+    Args:
+        command (str): Command to execute
+    Returns:
+        tuple (int, str, str): Returns exit code, stdout and stderr
+    '''
+    # Get absolute path of bash
+    bash = os.popen('command -v bash').read().rstrip('\r\n')
+    cpt = subprocess.Popen(
+        command,
+        executable=bash,
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+
+    # Wait until process terminates (without using p.wait())
+    while cpt.poll() is None:
+        # Process hasn't exited yet, let's wait some more time
+        time.sleep(0.1)
+
+    # Get stdout, stderr and return code
+    stdout, stderr = cpt.communicate()
+    return_code = 0 #cpt.returncode
+
+    return return_code, stdout, stderr
 
 
 def json2dict(data):
@@ -59,28 +92,31 @@ def val2base(string):
         int|float|string: transformed value or initial value if no transformation regex was found.
     '''
 
-    # Transform KiliByte, MegiByte and GigiByte into Bytes
+    # Transform KiloByte into Bytes
     val = re.search('^([0-9]+)Ki$', string, re.IGNORECASE)
     if val and val.group(1):
         return int(val.group(1)) * 1024
-
+    # Transform Megabytes into Bytes
     val = re.search('^([0-9]+)Mi$', string, re.IGNORECASE)
     if val and val.group(1):
         return int(val.group(1)) * (1024*1024)
-
+    # Transform Gigabytes into Bytes
     val = re.search('^([0-9]+)Gi$', string, re.IGNORECASE)
     if val and val.group(1):
         return int(val.group(1)) * (1024*1024*1024)
-
-    # Transform minutes and seconds into seconds
-    val = re.search('^([0-9]+)m([0-9]+)s$', string, re.IGNORECASE)
-    if val and val.group(1) and val.group(2):
-        return (int(val.group(1))*60 + val.group(2))
-
-    # Transform minutes into seconds
-    val = re.search('^([0-9]+)m$', string, re.IGNORECASE)
+    # Transform Terrabytes into Bytes
+    val = re.search('^([0-9]+)Ti$', string, re.IGNORECASE)
     if val and val.group(1):
-        return (int(val.group(1))*60)
+        return int(val.group(1)) * (1024*1024*1024*1024)
+
+    # Transform hours, minutes and seconds into seconds
+    val = re.search('^(([0-9]+)\s*h\s*)?(([0-9]+)\s*m\s*)?(([0-9]+)\s*s\s*)?$', string, re.IGNORECASE)
+    if val and (val.group(2) or val.group(4) or val.group(6)):
+        return (
+            (int(val.group(2) or 0) * 60 * 60) +
+            (int(val.group(4) or 0) * 60) +
+            (int(val.group(6) or 0))
+        )
 
     # Otherwise return value as it came in
     return string
@@ -138,6 +174,7 @@ def trans_pod_metrics(string):
         str: Returns newline separated node metrics ready for Prometheus to pull.
     '''
     data = json2dict(string)
+    more = get_pod_metrics_from_cli()
     cpu = []
     mem = []
 
@@ -146,7 +183,7 @@ def trans_pod_metrics(string):
     mem.append('# HELP kube_metrics_server_pod_mem The memory of a pod in Bytes.')
     mem.append('# TYPE kube_metrics_server_pod_mem gauge')
 
-    tpl = 'kube_metrics_server_pod_{}{{pod="{}",container="{}",namespace="{}",created="{}",timestamp="{}",window="{}",debugval="{}"}} {}'
+    tpl = 'kube_metrics_server_pod_{}{{node="{}",pod="{}",ip="{}",container="{}",namespace="{}",created="{}",timestamp="{}",window="{}",debugval="{}"}} {}'
 
     for pod in data.get('items', []):
         lbl = {
@@ -163,9 +200,66 @@ def trans_pod_metrics(string):
                 'cpu': container.get('usage', []).get('cpu', ''),
                 'mem': container.get('usage', []).get('memory', '')
             }
-            cpu.append(tpl.format('cpu', lbl['pod'], lbl['cont'], lbl['ns'], lbl['created'], lbl['timestamp'], lbl['window'], val['cpu'], val2base(val['cpu'])))
-            mem.append(tpl.format('mem', lbl['pod'], lbl['cont'], lbl['ns'], lbl['created'], lbl['timestamp'], lbl['window'], val['mem'], val2base(val['mem'])))
+            cpu.append(tpl.format(
+                'cpu',
+                more[lbl['pod']]['node'],
+                lbl['pod'],
+                more[lbl['pod']]['ip'],
+                lbl['cont'],
+                lbl['ns'],
+                lbl['created'],
+                lbl['timestamp'],
+                lbl['window'],
+                val['cpu'],
+                val2base(val['cpu'])
+            ))
+            mem.append(tpl.format(
+                'mem',
+                more[lbl['pod']]['node'],
+                lbl['pod'],
+                more[lbl['pod']]['ip'],
+                lbl['cont'],
+                lbl['ns'],
+                lbl['created'],
+                lbl['timestamp'],
+                lbl['window'],
+                val['mem'],
+                val2base(val['mem'])
+            ))
     return '\n'.join(cpu + mem)
+
+
+def get_pod_metrics_from_cli():
+    '''
+    Get pod metrics via CLI (allows to have node for enriching the data)
+
+    Returns
+        data: Dictionary of additional pod metrics
+    '''
+
+    data = dict()
+    command = 'kubectl get pods -o wide --no-headers --all-namespaces'
+    ret, out, err = shell_exec(command)
+
+    # 1:NS | 2:Name | 3:Ready | 4:Status | 5:Restarts | 6:Age | 7:IP | 8:Node
+    reg = re.compile(r"^([^ ]+)\s+([^ ]+)\s+([^ ]+)\s+([^ ]+)\s+([^ ]+)\s+([^ ]+)\s+([^ ]+)\s+([^ ]+)$")
+
+    for line in out.splitlines():
+        line = line.decode("utf-8")
+        line = reg.match(line)
+
+        data[line.group(2)] = {
+            'ns': line.group(1),
+            'name': line.group(2),
+            'ready': line.group(3),
+            'status': line.group(4),
+            'restarts': line.group(5),
+            'age': line.group(6),
+            'ip': line.group(7),
+            'node': line.group(8)
+        }
+
+    return data
 
 
 application = Flask(__name__) # pylint: disable=invalid-name
@@ -180,18 +274,25 @@ def metrics():
         https://prometheus.io/docs/instrumenting/exposition_formats/
         https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form
     '''
+    # Get info from K8s API
     req = {
         'nodes': requests.get(URL_NODES),
         'pods': requests.get(URL_PODS)
     }
+
+    # Object to JSON text
     json = {
         'nodes': req['nodes'].text,
         'pods': req['pods'].text
     }
+
+    # Convert to Prometheus format
     prom = {
         'nodes': trans_node_metrics(json['nodes']),
         'pods': trans_pod_metrics(json['pods'])
     }
+    get_pod_metrics_from_cli()
+    # Return response
     return Response(prom['nodes'] + '\n' + prom['pods'], status=200, mimetype='text/plain')
 
 
