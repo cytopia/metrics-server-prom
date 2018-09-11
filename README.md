@@ -24,6 +24,10 @@ metrics-server seems to be the [successor of heapster](https://github.com/kubern
 Prometheus on the other hand expects a special [text-based format](https://prometheus.io/docs/instrumenting/exposition_formats/#comments-help-text-and-type-information).
 So in order for Prometheus to scrape those metrics, they must be transparently transformed from JSON to its own format on every request.
 
+### Differences
+
+Other than metrics-server itself, this Docker container provides additional metrics metadata that are
+retrieved via `kubectl` API calls and included in the Prometheus output.
 
 ### How does it work
 
@@ -101,7 +105,7 @@ metrics-server provices metrics in the following format:
   "items": [
     {
       "metadata": {
-        "name": "etcd-server-events-ip-10-30-78-99.eu-central-1.compute.internal",
+        "name": "etcd-server-events-abc",
         "namespace": "kube-system",
         "selfLink": "/apis/metrics.k8s.io/v1beta1/namespaces/kube-system/pods/etcd-server-events-ip-10-30-78-99.eu-central-1.compute.internal",
         "creationTimestamp": "2018-08-20T03:19:05Z"
@@ -124,13 +128,15 @@ metrics-server provices metrics in the following format:
 ```
 
 metrics-server-prom transforms it to the following format:
+
+**Note:** Additional metadata (`node` and `ip`) have been added.
 ```
 # HELP kube_metrics_server_pod_cpu The CPU time of a pod in seconds.
 # TYPE kube_metrics_server_pod_cpu gauge
-kube_metrics_server_pod_cpu{pod="etcd-server-events-ip-10-30-78-99.eu-central-1.compute.internal",container="etcd-container",namespace="kube-system",created="2018-08-20T03:19:00Z",timestamp="2018-08-20T03:20:00Z",window="1m0s"} 420
+kube_metrics_server_pod_cpu{node="ip-10-30-78-99.eu-central-1.compute.internal",pod="etcd-server-events-abc",ip="10.30.62.138",container="etcd-container",namespace="kube-system",created="2018-08-20T03:19:00Z",timestamp="2018-08-20T03:20:00Z",window="1m0s"} 420
 # HELP kube_metrics_server_pod_mem The memory of a pod in KiloBytes.
 # TYPE kube_metrics_server_pod_mem gauge
-kube_metrics_server_pod_mem{pod="etcd-server-events-ip-10-30-78-99.eu-central-1.compute.internal",container="etcd-container",namespace="kube-system",created="2018-08-20T03:19:00Z",timestamp="2018-08-20T03:20:00Z",window="1m0s"} 128475136
+kube_metrics_server_pod_mem{node="ip-10-30-78-99.eu-central-1.compute.internal",pod="etcd-server-events-abc",ip="10.30.62.138",container="etcd-container",namespace="kube-system",created="2018-08-20T03:19:00Z",timestamp="2018-08-20T03:20:00Z",window="1m0s"} 128475136
 ```
 
 ## License
