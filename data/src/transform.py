@@ -143,19 +143,18 @@ def trans_node_metrics(string):
     mem.append('# HELP kube_metrics_server_node_mem The memory of a node in Bytes.')
     mem.append('# TYPE kube_metrics_server_node_mem gauge')
 
-    tpl = 'kube_metrics_server_node_{}{{node="{}",window="{}",debugval="{}"}} {}'
+    tpl = 'kube_metrics_server_node_{}{{node="{}",debugval="{}"}} {}'
 
     for node in data.get('items', []):
         lbl = {
-            'node': node.get('metadata', []).get('name', ''),
-            'window': node.get('window', '')
+            'node': node.get('metadata', []).get('name', '')
         }
         val = {
             'cpu': node.get('usage', []).get('cpu', ''),
             'mem': node.get('usage', []).get('memory', '')
         }
-        cpu.append(tpl.format('cpu', lbl['node'], lbl['window'], val['cpu'], val2base(val['cpu'])))
-        mem.append(tpl.format('mem', lbl['node'], lbl['window'], val['mem'], val2base(val['mem'])))
+        cpu.append(tpl.format('cpu', lbl['node'], val['cpu'], val2base(val['cpu'])))
+        mem.append(tpl.format('mem', lbl['node'], val['mem'], val2base(val['mem'])))
     return '\n'.join(cpu + mem)
 
 
@@ -181,13 +180,12 @@ def trans_pod_metrics(string):
     mem.append('# HELP kube_metrics_server_pod_mem The memory of a pod in Bytes.')
     mem.append('# TYPE kube_metrics_server_pod_mem gauge')
 
-    tpl = 'kube_metrics_server_pod_{}{{node="{}",pod="{}",ip="{}",container="{}",namespace="{}",window="{}",debugval="{}"}} {}'
+    tpl = 'kube_metrics_server_pod_{}{{node="{}",pod="{}",ip="{}",container="{}",namespace="{}",debugval="{}"}} {}'
 
     for pod in data.get('items', []):
         lbl = {
             'pod': pod.get('metadata', []).get('name', ''),
-            'ns': pod.get('metadata', []).get('namespace', ''),
-            'window': pod.get('window', '')
+            'ns': pod.get('metadata', []).get('namespace', '')
         }
         # Loop over defined container in each pod
         for container in pod.get('containers', []):
@@ -203,7 +201,6 @@ def trans_pod_metrics(string):
                 more[lbl['pod']]['ip'],
                 lbl['cont'],
                 lbl['ns'],
-                lbl['window'],
                 val['cpu'],
                 val2base(val['cpu'])
             ))
@@ -214,7 +211,6 @@ def trans_pod_metrics(string):
                 more[lbl['pod']]['ip'],
                 lbl['cont'],
                 lbl['ns'],
-                lbl['window'],
                 val['mem'],
                 val2base(val['mem'])
             ))
