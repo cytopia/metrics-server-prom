@@ -143,7 +143,7 @@ def trans_node_metrics(string):
     mem.append('# HELP kube_metrics_server_node_mem The memory of a node in Bytes.')
     mem.append('# TYPE kube_metrics_server_node_mem gauge')
 
-    tpl = 'kube_metrics_server_node_{}{{node="{}",debugval="{}"}} {}'
+    tpl = 'kube_metrics_server_node_{}{{node="{}"}} {}'
 
     for node in data.get('items', []):
         lbl = {
@@ -153,8 +153,8 @@ def trans_node_metrics(string):
             'cpu': node.get('usage', []).get('cpu', ''),
             'mem': node.get('usage', []).get('memory', '')
         }
-        cpu.append(tpl.format('cpu', lbl['node'], val['cpu'], val2base(val['cpu'])))
-        mem.append(tpl.format('mem', lbl['node'], val['mem'], val2base(val['mem'])))
+        cpu.append(tpl.format('cpu', lbl['node'], val2base(val['cpu'])))
+        mem.append(tpl.format('mem', lbl['node'], val2base(val['mem'])))
     return '\n'.join(cpu + mem)
 
 
@@ -180,7 +180,7 @@ def trans_pod_metrics(string):
     mem.append('# HELP kube_metrics_server_pod_mem The memory of a pod in Bytes.')
     mem.append('# TYPE kube_metrics_server_pod_mem gauge')
 
-    tpl = 'kube_metrics_server_pod_{}{{node="{}",pod="{}",ip="{}",container="{}",namespace="{}",debugval="{}"}} {}'
+    tpl = 'kube_metrics_server_pod_{}{{node="{}",pod="{}",ip="{}",container="{}",namespace="{}"}} {}'
 
     for pod in data.get('items', []):
         lbl = {
@@ -201,7 +201,6 @@ def trans_pod_metrics(string):
                 more[lbl['pod']]['ip'],
                 lbl['cont'],
                 lbl['ns'],
-                val['cpu'],
                 val2base(val['cpu'])
             ))
             mem.append(tpl.format(
@@ -211,7 +210,6 @@ def trans_pod_metrics(string):
                 more[lbl['pod']]['ip'],
                 lbl['cont'],
                 lbl['ns'],
-                val['mem'],
                 val2base(val['mem'])
             ))
     return '\n'.join(cpu + mem)
