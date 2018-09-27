@@ -143,21 +143,19 @@ def trans_node_metrics(string):
     mem.append('# HELP kube_metrics_server_node_mem The memory of a node in Bytes.')
     mem.append('# TYPE kube_metrics_server_node_mem gauge')
 
-    tpl = 'kube_metrics_server_node_{}{{node="{}",created="{}",timestamp="{}",window="{}",debugval="{}"}} {}'
+    tpl = 'kube_metrics_server_node_{}{{node="{}",window="{}",debugval="{}"}} {}'
 
     for node in data.get('items', []):
         lbl = {
             'node': node.get('metadata', []).get('name', ''),
-            'created': node.get('metadata', []).get('creationTimestamp', ''),
-            'timestamp': node.get('timestamp', ''),
             'window': node.get('window', '')
         }
         val = {
             'cpu': node.get('usage', []).get('cpu', ''),
             'mem': node.get('usage', []).get('memory', '')
         }
-        cpu.append(tpl.format('cpu', lbl['node'], lbl['created'], lbl['timestamp'], lbl['window'], val['cpu'], val2base(val['cpu'])))
-        mem.append(tpl.format('mem', lbl['node'], lbl['created'], lbl['timestamp'], lbl['window'], val['mem'], val2base(val['mem'])))
+        cpu.append(tpl.format('cpu', lbl['node'], lbl['window'], val['cpu'], val2base(val['cpu'])))
+        mem.append(tpl.format('mem', lbl['node'], lbl['window'], val['mem'], val2base(val['mem'])))
     return '\n'.join(cpu + mem)
 
 
@@ -183,14 +181,12 @@ def trans_pod_metrics(string):
     mem.append('# HELP kube_metrics_server_pod_mem The memory of a pod in Bytes.')
     mem.append('# TYPE kube_metrics_server_pod_mem gauge')
 
-    tpl = 'kube_metrics_server_pod_{}{{node="{}",pod="{}",ip="{}",container="{}",namespace="{}",created="{}",timestamp="{}",window="{}",debugval="{}"}} {}'
+    tpl = 'kube_metrics_server_pod_{}{{node="{}",pod="{}",ip="{}",container="{}",namespace="{}",window="{}",debugval="{}"}} {}'
 
     for pod in data.get('items', []):
         lbl = {
             'pod': pod.get('metadata', []).get('name', ''),
             'ns': pod.get('metadata', []).get('namespace', ''),
-            'created': pod.get('metadata', []).get('creationTimestamp', ''),
-            'timestamp': pod.get('timestamp', ''),
             'window': pod.get('window', '')
         }
         # Loop over defined container in each pod
@@ -207,8 +203,6 @@ def trans_pod_metrics(string):
                 more[lbl['pod']]['ip'],
                 lbl['cont'],
                 lbl['ns'],
-                lbl['created'],
-                lbl['timestamp'],
                 lbl['window'],
                 val['cpu'],
                 val2base(val['cpu'])
@@ -220,8 +214,6 @@ def trans_pod_metrics(string):
                 more[lbl['pod']]['ip'],
                 lbl['cont'],
                 lbl['ns'],
-                lbl['created'],
-                lbl['timestamp'],
                 lbl['window'],
                 val['mem'],
                 val2base(val['mem'])
