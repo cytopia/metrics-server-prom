@@ -35,6 +35,8 @@ def shell_exec(command):
     '''
     # Get absolute path of bash
     bash = os.popen('command -v bash').read().rstrip('\r\n')
+
+    # Execute
     cpt = subprocess.Popen(
         command,
         executable=bash,
@@ -42,11 +44,6 @@ def shell_exec(command):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE
     )
-
-    # Wait until process terminates (without using p.wait())
-    while cpt.poll() is None:
-        # Process hasn't exited yet, let's wait some more time
-        time.sleep(0.1)
 
     # Get stdout, stderr and return code
     stdout, stderr = cpt.communicate()
