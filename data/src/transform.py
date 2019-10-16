@@ -225,7 +225,7 @@ def get_pod_metrics_from_cli():
     ret, out, err = shell_exec(command)
 
     # 1:NS | 2:Name | 3:Ready | 4:Status | 5:Restarts | 6:Age | 7:IP | 8:Node
-    reg = re.compile(r"^([^ ]+)\s+([^ ]+)\s+([^ ]+)\s+([^ ]+)\s+([^ ]+)\s+([^ ]+)\s+([^ ]+)\s+([^ ]+)$")
+    reg = re.compile(r"^([^ ]+)\s+([^ ]+)\s+([^ ]+)\s+([^ ]+)\s+([^ ]+)\s+([^ ]+)\s+([^ ]+)\s+([^ ]+)\s+([^ ]+)$")
 
     for line in out.splitlines():
         line = line.decode("utf-8")
